@@ -177,7 +177,7 @@
 /* Edge labels */
 .mermaid .edgeLabel rect,
 .mermaid .edgeLabel {
-  background: var(--background-primary) !important;
-  fill:        var(--background-primary) !important;
-  color:       var(--text-muted)         !important;
+  background: transparent                !important;
+  fill:        transparent               !important;
+  color:       var(--text-normal)        !important;
 }
