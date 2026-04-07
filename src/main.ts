@@ -168,7 +168,7 @@ export default class MermaidZoomPlugin extends Plugin {
 		});
 
 		// ── Transform state ──────────────────────────────────────────────────
-		let scale = 1, tx = 0, ty = 0, locked = false;
+		let scale = 1, tx = 0, ty = 0, locked = true;
 
 		const { scaleFactor, panStep } = this.settings;
 		const MIN_SCALE = 0.05, MAX_SCALE = 20;
@@ -195,11 +195,13 @@ export default class MermaidZoomPlugin extends Plugin {
 
 		const btnLock = mkBtn('Toggle drag mode', '', () => {
 			locked = !locked;
-			setIcon(btnLock, locked ? 'lock' : 'lock-open');
+			setIcon(btnLock, locked ? 'lock-open' : 'lock');
 			btnLock.classList.toggle('mz-locked', locked);
 			viewport.classList.toggle('mz-grab', locked);
 		});
 		setIcon(btnLock, 'lock-open');
+		btnLock.classList.add('mz-locked');
+		requestAnimationFrame(() => viewport.classList.add('mz-grab'));
 
 		const btnAutoSize = mkBtn('Auto-size container', '⊡', () => {
 			scale = 1; tx = 0; ty = 0;

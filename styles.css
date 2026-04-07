@@ -126,3 +126,58 @@
     font-size: 16px;
   }
 }
+
+/* ── Mermaid color overrides ─────────────────────────────────────────────── */
+/*
+  Replace Mermaid's harsh default palette (bright orange, deep red, cobalt blue,
+  saturated green) with muted, dark-theme-aware tones using Obsidian CSS vars.
+  !important is required because Mermaid injects colours via a <style> block
+  inside the SVG with higher specificity.
+*/
+
+/* Node shapes: rect, circle, ellipse, polygon (diamond), path (special) */
+.mermaid .node rect,
+.mermaid .node circle,
+.mermaid .node ellipse,
+.mermaid .node polygon,
+.mermaid .node path {
+  fill:   var(--background-secondary)           !important;
+  stroke: var(--background-modifier-border)     !important;
+}
+
+/* Subgraph / cluster containers */
+.mermaid .cluster rect {
+  fill:   var(--background-primary-alt)         !important;
+  stroke: var(--background-modifier-border)     !important;
+  rx: 6px                                       !important;
+}
+
+/* All text nodes */
+.mermaid .label,
+.mermaid .nodeLabel,
+.mermaid text,
+.mermaid span {
+  color: var(--text-normal) !important;
+  fill:  var(--text-normal) !important;
+}
+
+/* Edges and arrow markers */
+.mermaid .edgePath .path,
+.mermaid .flowchart-link,
+.mermaid line {
+  stroke: var(--text-faint) !important;
+}
+
+.mermaid marker path,
+.mermaid .arrowheadPath {
+  fill:   var(--text-faint) !important;
+  stroke: var(--text-faint) !important;
+}
+
+/* Edge labels */
+.mermaid .edgeLabel rect,
+.mermaid .edgeLabel {
+  background: var(--background-primary) !important;
+  fill:        var(--background-primary) !important;
+  color:       var(--text-muted)         !important;
+}
