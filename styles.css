@@ -1,0 +1,111 @@
+/* ── Wrapper ─────────────────────────────────────────────────────────────── */
+.mz-wrapper {
+  position: relative;
+  width: 100%;
+  min-height: 120px;
+  /* height set by JS from SVG natural size; user can drag to resize */
+  resize: both;
+  overflow: hidden;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+}
+
+/* ── Viewport ────────────────────────────────────────────────────────────── */
+.mz-viewport {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.mz-viewport.mz-grab        { cursor: grab; }
+.mz-viewport.mz-grab:active { cursor: grabbing; }
+
+.mz-wrapper svg {
+  display: block;
+  width: auto !important;
+  height: auto !important;
+  max-width: none !important;
+  max-height: none !important;
+  transform-origin: 0 0;
+  transition: transform 0.1s ease-out;
+}
+
+/* ── Control panel ───────────────────────────────────────────────────────── */
+.mz-panel {
+  --mz-resting-opacity: 0.25; /* overridden per-element by JS from settings */
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 26px);
+  grid-template-rows:    repeat(3, 26px);
+  gap: 2px;
+  padding: 4px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15);
+  opacity: var(--mz-resting-opacity);
+  transition: opacity 0.2s;
+  z-index: 10;
+}
+
+.mz-wrapper:hover .mz-panel,
+.mz-wrapper:focus-within .mz-panel {
+  opacity: 1;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.mz-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.mz-btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border);
+  color: var(--text-normal);
+}
+
+.mz-btn:active {
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+}
+
+/* Lock active state — neutral, no theme accent colour */
+.mz-btn.mz-locked {
+  background: var(--background-modifier-border);
+  border-color: var(--text-muted);
+  color: var(--text-normal);
+}
+
+/* ── Mobile: larger touch targets ────────────────────────────────────────── */
+@media (pointer: coarse) {
+  .mz-panel {
+    grid-template-columns: repeat(3, 34px);
+    grid-template-rows:    repeat(3, 34px);
+    --mz-resting-opacity: 0.55;
+  }
+
+  .mz-btn {
+    width: 34px;
+    height: 34px;
+    font-size: 14px;
+  }
+}
