@@ -182,9 +182,9 @@ export default class MermaidZoomPlugin extends Plugin {
 		panel.className = 'mz-panel';
 		panel.style.setProperty('--mz-resting-opacity', String(this.settings.restingOpacity));
 
-		const mkBtn = (title: string, html: string, onClick: () => void): HTMLButtonElement => {
+		const mkBtn = (title: string, html: string, onClick: () => void, extraClass?: string): HTMLButtonElement => {
 			const b = document.createElement('button');
-			b.className = 'mz-btn';
+			b.className = 'mz-btn' + (extraClass ? ' ' + extraClass : '');
 			b.setAttribute('aria-label', title);
 			b.title = title;
 			b.innerHTML = html;
@@ -218,6 +218,17 @@ export default class MermaidZoomPlugin extends Plugin {
 				tx = 0; ty = 0;
 				applyTransform();
 			}),
+			mkBtn('Auto-size container', '⛶', () => {
+				scale = 1; tx = 0; ty = 0;
+				applyTransform();
+				requestAnimationFrame(() => {
+					const bb = svg.getBBox();
+					const w = bb.width  || parseFloat(svg.getAttribute('width')  ?? '') || 0;
+					const h = bb.height || parseFloat(svg.getAttribute('height') ?? '') || 0;
+					if (h > 0) wrapper.style.height = h + 'px';
+					if (w > 0) wrapper.style.width  = w + 'px';
+				});
+			}, 'mz-btn-autosize'),
 		].forEach(b => panel.appendChild(b));
 
 		wrapper.appendChild(panel);

@@ -42,7 +42,7 @@
   right: 10px;
   display: grid;
   grid-template-columns: repeat(3, 26px);
-  grid-template-rows:    repeat(3, 26px);
+  grid-template-rows:    repeat(3, 26px) 26px;
   gap: 2px;
   padding: 4px;
   background: var(--background-secondary);
@@ -95,11 +95,24 @@
   color: var(--text-normal);
 }
 
+/* Auto-size button: spans all 3 columns in the 4th row */
+.mz-btn.mz-btn-autosize {
+  grid-column: 1 / -1;
+  width: 100%;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
 /* ── Mobile: larger touch targets ────────────────────────────────────────── */
 @media (pointer: coarse) {
+  /* Disable resize handle on touch — unusable; use auto-size button instead */
+  .mz-wrapper {
+    resize: none;
+  }
+
   .mz-panel {
     grid-template-columns: repeat(3, 34px);
-    grid-template-rows:    repeat(3, 34px);
+    grid-template-rows:    repeat(3, 34px) 34px;
     --mz-resting-opacity: 0.55;
   }
 
@@ -107,5 +120,9 @@
     width: 34px;
     height: 34px;
     font-size: 14px;
+  }
+
+  .mz-btn.mz-btn-autosize {
+    font-size: 13px;
   }
 }
