@@ -3,6 +3,7 @@ import {
 	Plugin,
 	PluginSettingTab,
 	Setting,
+	setIcon,
 } from 'obsidian';
 
 // ── Settings ──────────────────────────────────────────────────────────────────
@@ -192,12 +193,13 @@ export default class MermaidZoomPlugin extends Plugin {
 			return b;
 		};
 
-		const btnLock = mkBtn('Toggle drag mode', '⊙', () => {
+		const btnLock = mkBtn('Toggle drag mode', '', () => {
 			locked = !locked;
-			btnLock.innerHTML = locked ? '◎' : '⊙';
+			setIcon(btnLock, locked ? 'lock' : 'lock-open');
 			btnLock.classList.toggle('mz-locked', locked);
 			viewport.classList.toggle('mz-grab', locked);
 		});
+		setIcon(btnLock, 'lock-open');
 
 		const btnAutoSize = mkBtn('Auto-size container', '⊡', () => {
 			scale = 1; tx = 0; ty = 0;

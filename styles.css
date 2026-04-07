@@ -96,11 +96,18 @@
   color: var(--text-normal);
 }
 
-/* Drag-lock active: filled circle, neutral highlight */
+/* Drag-lock active: neutral highlight */
 .mz-btn.mz-locked {
   background: var(--background-modifier-border);
   border-color: var(--text-muted);
   color: var(--text-normal);
+}
+
+/* Lucide SVG icon inside the lock button */
+.mz-btn svg.svg-icon {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
 }
 
 /* ── Mobile: larger touch targets, no resize handle ─────────────────────── */
