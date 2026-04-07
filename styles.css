@@ -37,9 +37,9 @@
 /* ── Control panel: 3×3 grid ─────────────────────────────────────────────── */
 /*
   Layout:
-    +   ↑   −       row 1: zoom in | pan up   | zoom out
-    ←   ⊙   →       row 2: pan lt  | drag     | pan rt
-        ↓   ⊡       row 3: (empty) | pan down | fit
+    +   ↑   −       row 1: zoom in   | pan up    | zoom out
+    ←   ⊙   →       row 2: pan left  | drag-lock | pan right
+    ⊡   ↓   ⤡       row 3: auto-size | pan down  | fit to view
 */
 .mz-panel {
   --mz-resting-opacity: 0.25;
@@ -102,10 +102,6 @@
   border-color: var(--text-muted);
   color: var(--text-normal);
 }
-
-/* Bottom row: col 2 and col 3 only — leaves col 1 empty */
-.mz-btn.mz-col2 { grid-column: 2; }
-.mz-btn.mz-col3 { grid-column: 3; }
 
 /* ── Mobile: larger touch targets, no resize handle ─────────────────────── */
 @media (pointer: coarse) {

@@ -199,30 +199,37 @@ export default class MermaidZoomPlugin extends Plugin {
 			viewport.classList.toggle('mz-grab', locked);
 		});
 
-		const btnDown = mkBtn('Pan down',    '↓', () => { ty += panStep; applyTransform(); });
-		const btnFit  = mkBtn('Fit to view', '⤡', () => {
-			const vw = viewport.clientWidth  || 400;
-			const vh = viewport.clientHeight || 300;
-			const bb = svg.getBBox();
-			const sw = bb.width  || parseFloat(svg.getAttribute('width')  ?? '') || vw;
-			const sh = bb.height || parseFloat(svg.getAttribute('height') ?? '') || vh;
-			scale = Math.min(vw / sw, vh / sh) * 0.95;
-			tx = 0; ty = 0;
+		const btnAutoSize = mkBtn('Auto-size container', '⊡', () => {
+			scale = 1; tx = 0; ty = 0;
 			applyTransform();
+			requestAnimationFrame(() => {
+				const bb = svg.getBBox();
+				const w = bb.width  || parseFloat(svg.getAttribute('width')  ?? '') || 0;
+				const h = bb.height || parseFloat(svg.getAttribute('height') ?? '') || 0;
+				if (h > 0) wrapper.style.height = h + 'px';
+				if (w > 0) wrapper.style.width  = w + 'px';
+			});
 		});
-		// Last row: pan-down and fit start from column 2 (no bottom-left cell)
-		btnDown.classList.add('mz-col2');
-		btnFit.classList.add('mz-col3');
 
 		[
-			mkBtn('Zoom in',  '+', () => { scale = clamp(scale * scaleFactor); applyTransform(); }),
-			mkBtn('Pan up',   '↑', () => { ty -= panStep;                       applyTransform(); }),
-			mkBtn('Zoom out', '−', () => { scale = clamp(scale / scaleFactor); applyTransform(); }),
-			mkBtn('Pan left', '←', () => { tx -= panStep;                       applyTransform(); }),
+			mkBtn('Zoom in',     '+',  () => { scale = clamp(scale * scaleFactor); applyTransform(); }),
+			mkBtn('Pan up',      '↑',  () => { ty -= panStep;                       applyTransform(); }),
+			mkBtn('Zoom out',    '−',  () => { scale = clamp(scale / scaleFactor); applyTransform(); }),
+			mkBtn('Pan left',    '←',  () => { tx -= panStep;                       applyTransform(); }),
 			btnLock,
-			mkBtn('Pan right','→', () => { tx += panStep;                       applyTransform(); }),
-			btnDown,
-			btnFit,
+			mkBtn('Pan right',   '→',  () => { tx += panStep;                       applyTransform(); }),
+			btnAutoSize,
+			mkBtn('Pan down',    '↓',  () => { ty += panStep;                       applyTransform(); }),
+			mkBtn('Fit to view', '⤡',  () => {
+				const vw = viewport.clientWidth  || 400;
+				const vh = viewport.clientHeight || 300;
+				const bb = svg.getBBox();
+				const sw = bb.width  || parseFloat(svg.getAttribute('width')  ?? '') || vw;
+				const sh = bb.height || parseFloat(svg.getAttribute('height') ?? '') || vh;
+				scale = Math.min(vw / sw, vh / sh) * 0.95;
+				tx = 0; ty = 0;
+				applyTransform();
+			}),
 		].forEach(b => panel.appendChild(b));
 
 		wrapper.appendChild(panel);
@@ -230,7 +237,7 @@ export default class MermaidZoomPlugin extends Plugin {
 		// ── Mouse drag ───────────────────────────────────────────────────────
 		let dragging = false, dragStartX = 0, dragStartY = 0, txAtDrag = 0, tyAtDrag = 0;
 
-		this.registerDomEvent(viewport, 'mousedown', (e: MouseEvent) => {
+		viewport.addEventListener('mousedown', (e: MouseEvent) => {
 			if (!locked) return;
 			dragging = true;
 			dragStartX = e.clientX; dragStartY = e.clientY;
@@ -245,9 +252,10 @@ export default class MermaidZoomPlugin extends Plugin {
 		});
 		this.registerDomEvent(window, 'mouseup', () => { dragging = false; });
 
-		// ── Touch drag / pinch-to-zoom ───────────────────────────────────────
+		// ── Touch drag / pinch-to-zoom (zoom anchored to pinch midpoint) ─────
 		let touchStartX = 0, touchStartY = 0, txAtTouch = 0, tyAtTouch = 0;
 		let lastPinchDist: number | null = null;
+		let lastPinchMidX = 0, lastPinchMidY = 0;
 
 		viewport.addEventListener('touchstart', (e: TouchEvent) => {
 			if (e.touches.length === 1 && locked) {
@@ -255,6 +263,9 @@ export default class MermaidZoomPlugin extends Plugin {
 				txAtTouch = tx; tyAtTouch = ty;
 			}
 			if (e.touches.length === 2) {
+				const rect = viewport.getBoundingClientRect();
+				lastPinchMidX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+				lastPinchMidY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
 				lastPinchDist = Math.hypot(
 					e.touches[0].clientX - e.touches[1].clientX,
 					e.touches[0].clientY - e.touches[1].clientY
@@ -273,7 +284,12 @@ export default class MermaidZoomPlugin extends Plugin {
 					e.touches[0].clientX - e.touches[1].clientX,
 					e.touches[0].clientY - e.touches[1].clientY
 				);
-				scale = clamp(scale * (dist / lastPinchDist));
+				const ratio = dist / lastPinchDist;
+				const newScale = clamp(scale * ratio);
+				// Anchor zoom to pinch midpoint
+				tx = lastPinchMidX - (lastPinchMidX - tx) * (newScale / scale);
+				ty = lastPinchMidY - (lastPinchMidY - ty) * (newScale / scale);
+				scale = newScale;
 				lastPinchDist = dist;
 				applyTransform();
 				e.preventDefault();
@@ -282,11 +298,18 @@ export default class MermaidZoomPlugin extends Plugin {
 
 		viewport.addEventListener('touchend', () => { lastPinchDist = null; }, { passive: true });
 
-		// ── Alt+Scroll to zoom ───────────────────────────────────────────────
+		// ── Alt+Scroll to zoom (anchored to cursor position) ─────────────────
 		viewport.addEventListener('wheel', (e: WheelEvent) => {
 			if (!e.altKey) return;
 			e.preventDefault();
-			scale = clamp(scale * (e.deltaY > 0 ? 1 / scaleFactor : scaleFactor));
+			const rect = viewport.getBoundingClientRect();
+			const cursorX = e.clientX - rect.left;
+			const cursorY = e.clientY - rect.top;
+			const newScale = clamp(scale * (e.deltaY > 0 ? 1 / scaleFactor : scaleFactor));
+			// Anchor zoom to cursor: keep the point under the cursor stationary
+			tx = cursorX - (cursorX - tx) * (newScale / scale);
+			ty = cursorY - (cursorY - ty) * (newScale / scale);
+			scale = newScale;
 			applyTransform();
 		}, { passive: false });
 	}
