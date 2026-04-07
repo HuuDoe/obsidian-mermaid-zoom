@@ -210,13 +210,15 @@ export default class MermaidZoomPlugin extends Plugin {
 
 		// ── Sizing helpers ────────────────────────────────────────────────────
 		// viewBox is authoritative: Mermaid sets it to CSS-pixel dimensions.
-		// Falls back to height attribute, then rendered rect.
-		const svgNaturalHeight = (): number => {
+		// Falls back to attributes, then rendered rect.
+		const svgNaturalDims = (): { w: number; h: number } => {
 			const vb = svg.getAttribute('viewBox')?.split(/[\s,]+/).map(Number);
-			if (vb && vb.length >= 4 && vb[3] > 0) return vb[3];
+			if (vb && vb.length >= 4 && vb[2] > 0 && vb[3] > 0) return { w: vb[2], h: vb[3] };
+			const attrW = parseFloat(svg.getAttribute('width')  ?? '');
 			const attrH = parseFloat(svg.getAttribute('height') ?? '');
-			if (attrH > 0) return attrH;
-			return svg.getBoundingClientRect().height;
+			if (attrW > 0 && attrH > 0) return { w: attrW, h: attrH };
+			const r = svg.getBoundingClientRect();
+			return { w: r.width, h: r.height };
 		};
 
 		// ── Persist height ────────────────────────────────────────────────────
@@ -241,15 +243,16 @@ export default class MermaidZoomPlugin extends Plugin {
 		ro.observe(wrapper);
 		this._resizeObservers.push(ro);
 
-		// Apply saved height, or fall back to the SVG's natural height
+		// Apply saved height, or fall back to the SVG's natural height.
+		// Also lock the SVG to explicit pixel dimensions so it never re-flows
+		// when the user drags the wrapper's resize handle.
 		requestAnimationFrame(() => {
+			const { w, h } = svgNaturalDims();
+			if (w > 0) svg.style.setProperty('width',  w + 'px', 'important');
+			if (h > 0) svg.style.setProperty('height', h + 'px', 'important');
+
 			const saved = key ? this.settings.diagramState[key] : null;
-			if (saved && saved.height > 0) {
-				wrapper.style.height = saved.height + 'px';
-			} else {
-				const h = svgNaturalHeight();
-				if (h > 0) wrapper.style.height = h + 'px';
-			}
+			wrapper.style.height = ((saved?.height ?? 0) > 0 ? saved!.height : h) + 'px';
 		});
 
 		// ── Transform state ──────────────────────────────────────────────────
@@ -292,15 +295,16 @@ export default class MermaidZoomPlugin extends Plugin {
 			scale = 1; tx = 0; ty = 0;
 			applyTransform();
 			requestAnimationFrame(() => {
-				const h = svgNaturalHeight();
-				if (h > 0) {
-					wrapper.style.height = h + 'px';
-					wrapper.style.width  = ''; // reset to CSS 100%
-					// Persist the auto-sized height immediately
-					if (key) {
-						this.settings.diagramState[key] = { height: h };
-						this.saveSettings();
-					}
+				const { w, h } = svgNaturalDims();
+				if (h <= 0) return;
+				// Height: natural SVG height
+				wrapper.style.height = h + 'px';
+				// Width: natural SVG width, but never wider than the note column
+				const maxW = wrapper.parentElement?.clientWidth ?? w;
+				wrapper.style.width = w > 0 ? Math.min(w, maxW) + 'px' : '';
+				if (key) {
+					this.settings.diagramState[key] = { height: h };
+					this.saveSettings();
 				}
 			});
 		});
@@ -315,14 +319,20 @@ export default class MermaidZoomPlugin extends Plugin {
 			btnAutoSize,
 			mkBtn('Pan down',    '↓',  () => { ty += panStep;                       applyTransform(); }),
 			mkBtn('Fit to view', '⤡',  () => {
-				const vw = viewport.clientWidth  || 400;
-				const vh = viewport.clientHeight || 300;
-				const bb = svg.getBBox();
-				const sw = bb.width  || parseFloat(svg.getAttribute('width')  ?? '') || vw;
-				const sh = bb.height || parseFloat(svg.getAttribute('height') ?? '') || vh;
-				scale = Math.min(vw / sw, vh / sh) * 0.95;
+				const vw = viewport.clientWidth || 400;
+				const { w, h } = svgNaturalDims();
+				if (!w || !h) return;
+				// Scale to fill available width (95% to leave a small margin)
+				scale = (vw / w) * 0.95;
 				tx = 0; ty = 0;
 				applyTransform();
+				// Shrink container height to exactly the scaled chart height — no blank gaps
+				const newH = Math.ceil(h * scale);
+				wrapper.style.height = newH + 'px';
+				if (key) {
+					this.settings.diagramState[key] = { height: newH };
+					this.saveSettings();
+				}
 			}),
 		].forEach(b => panel.appendChild(b));
 

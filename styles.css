@@ -26,8 +26,7 @@
 
 .mz-wrapper svg {
   display: block;
-  width: auto !important;
-  height: auto !important;
+  /* width and height locked to natural px by JS on attach — do not override */
   max-width: none !important;
   max-height: none !important;
   transform-origin: 0 0;
