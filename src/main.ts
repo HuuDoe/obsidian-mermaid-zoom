@@ -8,16 +8,22 @@ import {
 
 // ── Settings ──────────────────────────────────────────────────────────────────
 
+interface DiagramState {
+	height: number;
+}
+
 interface MermaidZoomSettings {
-	scaleFactor: number;
-	panStep: number;
+	scaleFactor:   number;
+	panStep:       number;
 	restingOpacity: number;
+	diagramState:  Record<string, DiagramState>;
 }
 
 const DEFAULT_SETTINGS: MermaidZoomSettings = {
 	scaleFactor:    1.08,
 	panStep:        40,
 	restingOpacity: 0.25,
+	diagramState:   {},
 };
 
 // ── Settings tab ──────────────────────────────────────────────────────────────
@@ -68,7 +74,6 @@ class MermaidZoomSettingTab extends PluginSettingTab {
 				.onChange(async (v) => {
 					this.plugin.settings.restingOpacity = v;
 					await this.plugin.saveSettings();
-					// Live-update all existing panels without a reload
 					document.querySelectorAll<HTMLElement>('.mz-panel').forEach(p => {
 						p.style.setProperty('--mz-resting-opacity', String(v));
 					});
@@ -80,7 +85,8 @@ class MermaidZoomSettingTab extends PluginSettingTab {
 
 export default class MermaidZoomPlugin extends Plugin {
 	settings: MermaidZoomSettings;
-	private _observer: MutationObserver | null = null;
+	private _observer:        MutationObserver | null = null;
+	private _resizeObservers: ResizeObserver[]        = [];
 
 	async onload() {
 		await this.loadSettings();
@@ -102,6 +108,9 @@ export default class MermaidZoomPlugin extends Plugin {
 
 	onunload() {
 		this._observer?.disconnect();
+		this._resizeObservers.forEach(ro => ro.disconnect());
+		this._resizeObservers = [];
+
 		document.querySelectorAll('.mz-wrapper').forEach(wrapper => {
 			const svg = wrapper.querySelector('svg');
 			const mermaidEl = wrapper.closest('.mermaid');
@@ -115,10 +124,30 @@ export default class MermaidZoomPlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		// Ensure diagramState always exists (upgrading from older data.json)
+		this.settings.diagramState ??= {};
 	}
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	// ── Diagram key ───────────────────────────────────────────────────────────
+	// Key format: "path/to/note.md:2"  (file path + index of this .mermaid in the note)
+	// Traverses the workspace leaves to find which file contains the element.
+
+	private _getDiagramKey(mermaidEl: HTMLElement): string | null {
+		let result: string | null = null;
+		this.app.workspace.iterateAllLeaves(leaf => {
+			if (result) return;
+			if (!leaf.view.containerEl.contains(mermaidEl)) return;
+			const file = (leaf.view as { file?: { path: string } }).file;
+			if (!file) return;
+			const siblings = Array.from(leaf.view.containerEl.querySelectorAll('.mermaid'));
+			const idx = siblings.indexOf(mermaidEl);
+			if (idx >= 0) result = `${file.path}:${idx}`;
+		});
+		return result;
 	}
 
 	// ── Discovery ─────────────────────────────────────────────────────────────
@@ -156,9 +185,9 @@ export default class MermaidZoomPlugin extends Plugin {
 		viewport.appendChild(svg);
 		wrapper.appendChild(viewport);
 
-		// Returns the SVG's natural height in CSS pixels.
-		// viewBox is the authoritative source — Mermaid always sets it to CSS-pixel dims.
-		// Falls back to the height attribute, then the rendered bounding rect.
+		// ── Sizing helpers ────────────────────────────────────────────────────
+		// viewBox is authoritative: Mermaid sets it to CSS-pixel dimensions.
+		// Falls back to height attribute, then rendered rect.
 		const svgNaturalHeight = (): number => {
 			const vb = svg.getAttribute('viewBox')?.split(/[\s,]+/).map(Number);
 			if (vb && vb.length >= 4 && vb[3] > 0) return vb[3];
@@ -167,10 +196,37 @@ export default class MermaidZoomPlugin extends Plugin {
 			return svg.getBoundingClientRect().height;
 		};
 
-		// Size wrapper to the SVG's natural height on first render
+		// ── Persist height ────────────────────────────────────────────────────
+		const key = this._getDiagramKey(mermaidEl);
+
+		const saveHeight = (() => {
+			let timer: ReturnType<typeof setTimeout> | null = null;
+			return () => {
+				if (!key) return;
+				if (timer) clearTimeout(timer);
+				timer = setTimeout(() => {
+					const h = wrapper.clientHeight;
+					if (h <= 0) return;
+					this.settings.diagramState[key] = { height: h };
+					this.saveSettings();
+				}, 600);
+			};
+		})();
+
+		// Watch for user-initiated resize (dragging the corner handle)
+		const ro = new ResizeObserver(saveHeight);
+		ro.observe(wrapper);
+		this._resizeObservers.push(ro);
+
+		// Apply saved height, or fall back to the SVG's natural height
 		requestAnimationFrame(() => {
-			const h = svgNaturalHeight();
-			if (h > 0) wrapper.style.height = h + 'px';
+			const saved = key ? this.settings.diagramState[key] : null;
+			if (saved && saved.height > 0) {
+				wrapper.style.height = saved.height + 'px';
+			} else {
+				const h = svgNaturalHeight();
+				if (h > 0) wrapper.style.height = h + 'px';
+			}
 		});
 
 		// ── Transform state ──────────────────────────────────────────────────
@@ -214,8 +270,15 @@ export default class MermaidZoomPlugin extends Plugin {
 			applyTransform();
 			requestAnimationFrame(() => {
 				const h = svgNaturalHeight();
-				if (h > 0) wrapper.style.height = h + 'px';
-				wrapper.style.width = ''; // reset to CSS 100%
+				if (h > 0) {
+					wrapper.style.height = h + 'px';
+					wrapper.style.width  = ''; // reset to CSS 100%
+					// Persist the auto-sized height immediately
+					if (key) {
+						this.settings.diagramState[key] = { height: h };
+						this.saveSettings();
+					}
+				}
 			});
 		});
 
@@ -260,7 +323,7 @@ export default class MermaidZoomPlugin extends Plugin {
 		});
 		this.registerDomEvent(window, 'mouseup', () => { dragging = false; });
 
-		// ── Touch drag / pinch-to-zoom (zoom anchored to pinch midpoint) ─────
+		// ── Touch drag / pinch-to-zoom (anchored to pinch midpoint) ──────────
 		let touchStartX = 0, touchStartY = 0, txAtTouch = 0, tyAtTouch = 0;
 		let lastPinchDist: number | null = null;
 		let lastPinchMidX = 0, lastPinchMidY = 0;
@@ -294,7 +357,6 @@ export default class MermaidZoomPlugin extends Plugin {
 				);
 				const ratio = dist / lastPinchDist;
 				const newScale = clamp(scale * ratio);
-				// Anchor zoom to pinch midpoint
 				tx = lastPinchMidX - (lastPinchMidX - tx) * (newScale / scale);
 				ty = lastPinchMidY - (lastPinchMidY - ty) * (newScale / scale);
 				scale = newScale;
@@ -306,7 +368,7 @@ export default class MermaidZoomPlugin extends Plugin {
 
 		viewport.addEventListener('touchend', () => { lastPinchDist = null; }, { passive: true });
 
-		// ── Alt+Scroll to zoom (anchored to cursor position) ─────────────────
+		// ── Alt+Scroll to zoom (anchored to cursor) ───────────────────────────
 		viewport.addEventListener('wheel', (e: WheelEvent) => {
 			if (!e.altKey) return;
 			e.preventDefault();
@@ -314,7 +376,6 @@ export default class MermaidZoomPlugin extends Plugin {
 			const cursorX = e.clientX - rect.left;
 			const cursorY = e.clientY - rect.top;
 			const newScale = clamp(scale * (e.deltaY > 0 ? 1 / scaleFactor : scaleFactor));
-			// Anchor zoom to cursor: keep the point under the cursor stationary
 			tx = cursorX - (cursorX - tx) * (newScale / scale);
 			ty = cursorY - (cursorY - ty) * (newScale / scale);
 			scale = newScale;
