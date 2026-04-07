@@ -156,15 +156,21 @@ export default class MermaidZoomPlugin extends Plugin {
 		viewport.appendChild(svg);
 		wrapper.appendChild(viewport);
 
-		// Size wrapper to the SVG's natural height so fit-to-view works immediately
+		// Returns the SVG's natural height in CSS pixels.
+		// viewBox is the authoritative source — Mermaid always sets it to CSS-pixel dims.
+		// Falls back to the height attribute, then the rendered bounding rect.
+		const svgNaturalHeight = (): number => {
+			const vb = svg.getAttribute('viewBox')?.split(/[\s,]+/).map(Number);
+			if (vb && vb.length >= 4 && vb[3] > 0) return vb[3];
+			const attrH = parseFloat(svg.getAttribute('height') ?? '');
+			if (attrH > 0) return attrH;
+			return svg.getBoundingClientRect().height;
+		};
+
+		// Size wrapper to the SVG's natural height on first render
 		requestAnimationFrame(() => {
-			const bb = svg.getBBox();
-			const naturalH =
-				bb.height ||
-				parseFloat(svg.getAttribute('height') ?? '') ||
-				parseFloat(svg.style.height) ||
-				0;
-			if (naturalH > 0) wrapper.style.height = naturalH + 'px';
+			const h = svgNaturalHeight();
+			if (h > 0) wrapper.style.height = h + 'px';
 		});
 
 		// ── Transform state ──────────────────────────────────────────────────
@@ -207,11 +213,9 @@ export default class MermaidZoomPlugin extends Plugin {
 			scale = 1; tx = 0; ty = 0;
 			applyTransform();
 			requestAnimationFrame(() => {
-				const bb = svg.getBBox();
-				const w = bb.width  || parseFloat(svg.getAttribute('width')  ?? '') || 0;
-				const h = bb.height || parseFloat(svg.getAttribute('height') ?? '') || 0;
+				const h = svgNaturalHeight();
 				if (h > 0) wrapper.style.height = h + 'px';
-				if (w > 0) wrapper.style.width  = w + 'px';
+				wrapper.style.width = ''; // reset to CSS 100%
 			});
 		});
 
