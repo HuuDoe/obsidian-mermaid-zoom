@@ -192,43 +192,37 @@ export default class MermaidZoomPlugin extends Plugin {
 			return b;
 		};
 
-		const btnLock = mkBtn('Toggle pan lock', '🔓', () => {
+		const btnLock = mkBtn('Toggle drag mode', '⊙', () => {
 			locked = !locked;
-			btnLock.innerHTML = locked ? '🔒' : '🔓';
+			btnLock.innerHTML = locked ? '◎' : '⊙';
 			btnLock.classList.toggle('mz-locked', locked);
 			viewport.classList.toggle('mz-grab', locked);
 		});
 
+		const btnDown = mkBtn('Pan down',    '↓', () => { ty += panStep; applyTransform(); });
+		const btnFit  = mkBtn('Fit to view', '⤡', () => {
+			const vw = viewport.clientWidth  || 400;
+			const vh = viewport.clientHeight || 300;
+			const bb = svg.getBBox();
+			const sw = bb.width  || parseFloat(svg.getAttribute('width')  ?? '') || vw;
+			const sh = bb.height || parseFloat(svg.getAttribute('height') ?? '') || vh;
+			scale = Math.min(vw / sw, vh / sh) * 0.95;
+			tx = 0; ty = 0;
+			applyTransform();
+		});
+		// Last row: pan-down and fit start from column 2 (no bottom-left cell)
+		btnDown.classList.add('mz-col2');
+		btnFit.classList.add('mz-col3');
+
 		[
-			mkBtn('Zoom in',     '⊕', () => { scale = clamp(scale * scaleFactor); applyTransform(); }),
-			mkBtn('Pan up',      '▲', () => { ty -= panStep;                       applyTransform(); }),
-			mkBtn('Zoom out',    '⊖', () => { scale = clamp(scale / scaleFactor); applyTransform(); }),
-			mkBtn('Pan left',    '◀', () => { tx -= panStep;                       applyTransform(); }),
+			mkBtn('Zoom in',  '+', () => { scale = clamp(scale * scaleFactor); applyTransform(); }),
+			mkBtn('Pan up',   '↑', () => { ty -= panStep;                       applyTransform(); }),
+			mkBtn('Zoom out', '−', () => { scale = clamp(scale / scaleFactor); applyTransform(); }),
+			mkBtn('Pan left', '←', () => { tx -= panStep;                       applyTransform(); }),
 			btnLock,
-			mkBtn('Pan right',   '▶', () => { tx += panStep;                       applyTransform(); }),
-			mkBtn('Reset view',  '⌂', () => { scale = 1; tx = 0; ty = 0;           applyTransform(); }),
-			mkBtn('Pan down',    '▼', () => { ty += panStep;                       applyTransform(); }),
-			mkBtn('Fit to view', '⤢', () => {
-				const vw = viewport.clientWidth  || 400;
-				const vh = viewport.clientHeight || 300;
-				const bb = svg.getBBox();
-				const sw = bb.width  || parseFloat(svg.getAttribute('width')  ?? '') || vw;
-				const sh = bb.height || parseFloat(svg.getAttribute('height') ?? '') || vh;
-				scale = Math.min(vw / sw, vh / sh) * 0.95;
-				tx = 0; ty = 0;
-				applyTransform();
-			}),
-			mkBtn('Auto-size container', '⛶', () => {
-				scale = 1; tx = 0; ty = 0;
-				applyTransform();
-				requestAnimationFrame(() => {
-					const bb = svg.getBBox();
-					const w = bb.width  || parseFloat(svg.getAttribute('width')  ?? '') || 0;
-					const h = bb.height || parseFloat(svg.getAttribute('height') ?? '') || 0;
-					if (h > 0) wrapper.style.height = h + 'px';
-					if (w > 0) wrapper.style.width  = w + 'px';
-				});
-			}, 'mz-btn-autosize'),
+			mkBtn('Pan right','→', () => { tx += panStep;                       applyTransform(); }),
+			btnDown,
+			btnFit,
 		].forEach(b => panel.appendChild(b));
 
 		wrapper.appendChild(panel);
