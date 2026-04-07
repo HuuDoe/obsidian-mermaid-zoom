@@ -92,6 +92,11 @@ export default class MermaidZoomPlugin extends Plugin {
 		await this.loadSettings();
 		this.addSettingTab(new MermaidZoomSettingTab(this.app, this));
 
+		// Patch Mermaid's theme variables before any diagrams render.
+		// We read the actual CSS variable values so the color matches the
+		// active Obsidian theme (dark or light) at load time.
+		this._patchMermaidTheme();
+
 		this.app.workspace.onLayoutReady(() => this._processAll());
 
 		this.registerEvent(
@@ -148,6 +153,24 @@ export default class MermaidZoomPlugin extends Plugin {
 			if (idx >= 0) result = `${file.path}:${idx}`;
 		});
 		return result;
+	}
+
+	// ── Mermaid theme patch ───────────────────────────────────────────────────
+
+	private _patchMermaidTheme() {
+		const mermaid = (window as unknown as Record<string, unknown>)['mermaid'] as
+			{ initialize?: (cfg: Record<string, unknown>) => void } | undefined;
+		if (!mermaid?.initialize) return;
+
+		// Read the actual background-secondary value from the active Obsidian theme
+		const bg = getComputedStyle(document.body)
+			.getPropertyValue('--background-secondary').trim() || '#2a2a3e';
+
+		mermaid.initialize({
+			themeVariables: {
+				edgeLabelBackground: bg,
+			},
+		});
 	}
 
 	// ── Discovery ─────────────────────────────────────────────────────────────

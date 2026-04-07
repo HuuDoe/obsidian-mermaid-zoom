@@ -174,13 +174,8 @@
   stroke: var(--text-faint) !important;
 }
 
-/* Edge labels — only fix text color; leave Mermaid's background alone.
-   The span lives inside a foreignObject where background overrides bleed full-width. */
+/* Edge labels — background set via mermaid.initialize() themeVariables.
+   Only override text color here so it contrasts against --background-secondary. */
 .mermaid span.edgeLabel {
-  color: #1a1a2e !important;
-}
-
-/* Fallback for rect-based edge labels (older Mermaid versions) */
-.mermaid .edgeLabel rect {
-  fill: var(--background-secondary) !important;
+  color: var(--text-normal) !important;
 }
