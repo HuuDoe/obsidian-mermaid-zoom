@@ -21,7 +21,7 @@
   -webkit-user-select: none;
 }
 
-.mz-viewport.mz-grab        { cursor: grab; }
+.mz-viewport.mz-grab        { cursor: grab; touch-action: none; }
 .mz-viewport.mz-grab:active { cursor: grabbing; }
 
 .mz-wrapper svg {

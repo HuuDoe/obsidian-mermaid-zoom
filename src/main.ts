@@ -78,6 +78,22 @@ class MermaidZoomSettingTab extends PluginSettingTab {
 						p.style.setProperty('--mz-resting-opacity', String(v));
 					});
 				}));
+		new Setting(containerEl)
+			.setName('Reset to defaults')
+			.setDesc('Restore zoom step, pan step, and opacity to their default values.')
+			.addButton(btn => btn
+				.setButtonText('Reset')
+				.setWarning()
+				.onClick(async () => {
+					this.plugin.settings.scaleFactor    = DEFAULT_SETTINGS.scaleFactor;
+					this.plugin.settings.panStep        = DEFAULT_SETTINGS.panStep;
+					this.plugin.settings.restingOpacity = DEFAULT_SETTINGS.restingOpacity;
+					await this.plugin.saveSettings();
+					this.display();
+					document.querySelectorAll<HTMLElement>('.mz-panel').forEach(p => {
+						p.style.setProperty('--mz-resting-opacity', String(DEFAULT_SETTINGS.restingOpacity));
+					});
+				}));
 	}
 }
 
@@ -365,6 +381,8 @@ export default class MermaidZoomPlugin extends Plugin {
 			if (e.touches.length === 1 && locked) {
 				touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY;
 				txAtTouch = tx; tyAtTouch = ty;
+				// Stop Obsidian's parent swipe-to-open-sidebar from firing
+				e.stopPropagation();
 			}
 			if (e.touches.length === 2) {
 				const rect = viewport.getBoundingClientRect();
@@ -374,14 +392,19 @@ export default class MermaidZoomPlugin extends Plugin {
 					e.touches[0].clientX - e.touches[1].clientX,
 					e.touches[0].clientY - e.touches[1].clientY
 				);
+				// Stop two-finger swipe triggering browser back/forward navigation
+				e.stopPropagation();
+				e.preventDefault();
 			}
-		}, { passive: true });
+		}, { passive: false });
 
 		viewport.addEventListener('touchmove', (e: TouchEvent) => {
 			if (e.touches.length === 1 && locked) {
 				tx = txAtTouch + (e.touches[0].clientX - touchStartX);
 				ty = tyAtTouch + (e.touches[0].clientY - touchStartY);
 				applyTransform();
+				e.stopPropagation();
+				e.preventDefault();
 			}
 			if (e.touches.length === 2 && lastPinchDist !== null) {
 				const dist = Math.hypot(
@@ -395,6 +418,7 @@ export default class MermaidZoomPlugin extends Plugin {
 				scale = newScale;
 				lastPinchDist = dist;
 				applyTransform();
+				e.stopPropagation();
 				e.preventDefault();
 			}
 		}, { passive: false });
