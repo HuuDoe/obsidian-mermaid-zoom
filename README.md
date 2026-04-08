@@ -91,6 +91,10 @@ To test in Obsidian, copy `main.js`, `styles.css`, and `manifest.json` into your
 
 ## Changelog
 
+### v1.1.2 — 2026-04-08
+- **Mobile: pinch-to-zoom snap fixed** — lifting fingers one at a time no longer causes a jarring jump in zoom or position
+- **Mobile: auto-size (⊡) fixed** — now fits to available screen width on mobile instead of rendering at 1:1 scale and overflowing
+
 ### v1.1.1 — 2026-04-08
 - **Settings:** added Reset to defaults button
 - **Mobile:** fixed swipe-to-open-sidebar triggering while panning a diagram
