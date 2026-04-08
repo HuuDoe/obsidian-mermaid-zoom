@@ -1,6 +1,6 @@
 # Mermaid Zoom
 
-Pan, zoom, and navigate Mermaid diagrams in [Obsidian](https://obsidian.md) with a GitHub-style control panel — on both desktop and mobile.
+Fix oversized, unreadable, or overflowing Mermaid diagrams in [Obsidian](https://obsidian.md). Mermaid Zoom wraps every diagram in an interactive viewer with zoom, pan, drag, and resize — so large flowcharts, sequence diagrams, and entity-relationship diagrams stay readable at any scale, on desktop and mobile.
 
 ---
 
