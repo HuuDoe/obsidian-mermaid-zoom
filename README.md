@@ -88,6 +88,33 @@ To test in Obsidian, copy `main.js`, `styles.css`, and `manifest.json` into your
 
 ---
 
+## Changelog
+
+### v1.1.1 — 2026-04-08
+- **Settings:** added Reset to defaults button
+- **Mobile:** fixed swipe-to-open-sidebar triggering while panning a diagram
+- **Mobile:** fixed two-finger pinch triggering browser back/forward navigation
+- **Mobile:** eliminated touch drag lag via `touch-action: none`
+
+### v1.1.0 — 2026-04-08
+- **Persist container height** per diagram — saved to `data.json`, restored on note reopen
+- **Cursor-anchored zoom** — Alt+Scroll and pinch-to-zoom keep the point under the cursor stationary
+- **Lucide lock icons** — drag-toggle uses Obsidian's native `lock-open` / `lock` icons
+- **Mermaid color theming** — node, cluster, edge, and label colours overridden to match active Obsidian theme
+- **Edge label background** patched via `mermaid.initialize()` to match `--background-secondary`
+- **Auto-size (⊡)** — sets both width (capped at note column) and height from SVG viewBox
+- **Fit to view (⤡)** — scales to fill available width, shrinks container height to eliminate blank gaps
+- **Drag-to-pan on by default** — pan lock starts active; button toggles it off
+- **SVG locked to natural pixel dimensions** — resizing the wrapper no longer rescales the chart
+
+### v1.0.0 — initial release
+- Zoom, pan, drag, pinch-to-zoom, fit, reset
+- Resizable container with corner handle
+- Configurable zoom step, pan step, panel opacity
+- Desktop and mobile support
+
+---
+
 ## License
 
 [MIT](LICENSE)
