@@ -38,9 +38,10 @@ The panel fades in when you hover over a diagram (always visible on touch screen
 
 ### Manual
 
-1. Go to the [latest release](https://github.com/HuuDoe/obsidian-mermaid-zoom/releases/latest) and download `main.js`, `styles.css`, and `manifest.json`.
-2. Copy all three files into your vault at `.obsidian/plugins/mermaid-zoom/`.
-3. In Obsidian: **Settings → Community plugins** → enable **Mermaid Zoom**.
+1. In Obsidian: **Settings → Community plugins** → turn off **Restricted mode** if it's on.
+2. Go to the [latest release](https://github.com/HuuDoe/obsidian-mermaid-zoom/releases/latest) and download `main.js`, `styles.css`, and `manifest.json`.
+3. In your vault folder, create the directory `.obsidian/plugins/mermaid-zoom/` and place all three files inside it.
+4. Back in Obsidian: **Settings → Community plugins** → click the **Reload plugins** button (↺), then find **Mermaid Zoom** in the list and enable it.
 
 ### Via BRAT (beta testing)
 
