@@ -308,20 +308,28 @@ export default class MermaidZoomPlugin extends Plugin {
 		requestAnimationFrame(() => viewport.classList.add('mz-grab'));
 
 		const btnAutoSize = mkBtn('Auto-size container', '⊡', () => {
-			scale = 1; tx = 0; ty = 0;
-			applyTransform();
+			tx = 0; ty = 0;
 			requestAnimationFrame(() => {
 				const { w, h } = svgNaturalDims();
-				if (h <= 0) return;
-				// Height: natural SVG height
-				wrapper.style.height = h + 'px';
-				// Width: natural SVG width, but never wider than the note column
+				if (!w || !h) return;
 				const maxW = wrapper.parentElement?.clientWidth ?? w;
-				wrapper.style.width = w > 0 ? Math.min(w, maxW) + 'px' : '';
-				if (key) {
-					this.settings.diagramState[key] = { height: h };
-					this.saveSettings();
+				const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+				if (isTouchDevice || w > maxW) {
+					// On mobile or when diagram is wider than the column:
+					// scale to fit width and shrink container height to match — same as fit-to-view
+					scale = (maxW / w) * 0.95;
+					wrapper.style.width  = '';
+					const newH = Math.ceil(h * scale);
+					wrapper.style.height = newH + 'px';
+					if (key) { this.settings.diagramState[key] = { height: newH }; this.saveSettings(); }
+				} else {
+					// Desktop with diagram narrower than column: natural 1:1 size
+					scale = 1;
+					wrapper.style.height = h + 'px';
+					wrapper.style.width  = Math.min(w, maxW) + 'px';
+					if (key) { this.settings.diagramState[key] = { height: h }; this.saveSettings(); }
 				}
+				applyTransform();
 			});
 		});
 
@@ -376,12 +384,13 @@ export default class MermaidZoomPlugin extends Plugin {
 		let touchStartX = 0, touchStartY = 0, txAtTouch = 0, tyAtTouch = 0;
 		let lastPinchDist: number | null = null;
 		let lastPinchMidX = 0, lastPinchMidY = 0;
+		// Prevents the last finger lifting from a pinch being treated as a pan start
+		let wasPinching = false;
 
 		viewport.addEventListener('touchstart', (e: TouchEvent) => {
 			if (e.touches.length === 1 && locked) {
 				touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY;
 				txAtTouch = tx; tyAtTouch = ty;
-				// Stop Obsidian's parent swipe-to-open-sidebar from firing
 				e.stopPropagation();
 			}
 			if (e.touches.length === 2) {
@@ -392,7 +401,6 @@ export default class MermaidZoomPlugin extends Plugin {
 					e.touches[0].clientX - e.touches[1].clientX,
 					e.touches[0].clientY - e.touches[1].clientY
 				);
-				// Stop two-finger swipe triggering browser back/forward navigation
 				e.stopPropagation();
 				e.preventDefault();
 			}
@@ -400,6 +408,12 @@ export default class MermaidZoomPlugin extends Plugin {
 
 		viewport.addEventListener('touchmove', (e: TouchEvent) => {
 			if (e.touches.length === 1 && locked) {
+				if (wasPinching) {
+					// Re-anchor so the first move after a pinch never produces a jump
+					touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY;
+					txAtTouch = tx; tyAtTouch = ty;
+					wasPinching = false;
+				}
 				tx = txAtTouch + (e.touches[0].clientX - touchStartX);
 				ty = tyAtTouch + (e.touches[0].clientY - touchStartY);
 				applyTransform();
@@ -423,7 +437,13 @@ export default class MermaidZoomPlugin extends Plugin {
 			}
 		}, { passive: false });
 
-		viewport.addEventListener('touchend', () => { lastPinchDist = null; }, { passive: true });
+		viewport.addEventListener('touchend', (e: TouchEvent) => {
+			if (lastPinchDist !== null && e.touches.length < 2) {
+				// A pinch just ended — flag so the next 1-finger move re-anchors
+				wasPinching = true;
+			}
+			if (e.touches.length === 0) lastPinchDist = null;
+		}, { passive: true });
 
 		// ── Alt+Scroll to zoom (anchored to cursor) ───────────────────────────
 		viewport.addEventListener('wheel', (e: WheelEvent) => {
